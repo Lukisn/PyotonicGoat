@@ -7,22 +7,22 @@ from os import walk, stat
 from os.path import abspath, join, isdir
 
 
-class Scanner():
-    """Simple Ddirectory scanner."""
+class Scanner:
+    """Simple Directory scanner."""
 
     def __init__(self, base):
         """Initializer."""
         if not isdir(base):
             raise IOError("Base dir '{}' does not exist!".format(base))
         self.base = base
-        self.last_time = datetime.datetime.now()
-        self.last_result = self.scan()
+        self.last_time = None
+        self.last_result = None
+        self.scan()  # initialize scanner with first scan data
 
     def has_changed(self):
         """Check if the directory tree has changed since the last scan."""
-        current_result = self.scan()
         last_result = self.last_result
-        self.last_result = current_result
+        current_result = self.scan()
         # STEP 1: check number of files:
         if len(current_result) > len(last_result):
             return True  # new files added
@@ -42,8 +42,10 @@ class Scanner():
         """Scan the directory tree.
 
         returns the scan data in a flat dictionary where the keys are the file
-        names with fullabsolute paths and the keys are ``stat_info`` objects
-        containing the relevant information.
+        names with full absolute paths and the values are ``stat_info`` objects
+        containing the relevant information. Also save the scan in the
+        ``last_scan`` property of the object and the scan time in the
+        ``last_time`` property.
         """
         scan = {}  # {"full/path/file.name": <stat_info object>}
         for path, _, files in walk(self.base):  # directories not needed
@@ -52,14 +54,16 @@ class Scanner():
                 full_path = join(path, fname)
                 stat_info = stat(full_path)
                 scan[full_path] = stat_info
+        self.last_time = datetime.datetime.now()
+        self.last_result = scan
         return scan
 
 
 if __name__ == "__main__":
     import tempfile
-    scanner = Scanner(base="./test_dir/")
+    scanner = Scanner(base="./tests/")
     print(scanner.has_changed(), "False?")
-    tfile = tempfile.NamedTemporaryFile(dir="./test_dir/", mode="w+t")
+    tfile = tempfile.NamedTemporaryFile(dir="./tests/", mode="w+t")
     print(scanner.has_changed(), "True?")
     tfile.write("askdkalsdkkald")
     tfile.flush()
