@@ -91,8 +91,7 @@ class ExampleTestCases(unittest.TestCase):
         assert not exists(self.base)
 
     # TODO: write unit tests for Tester behavior
-    def test_(self):
-        """Test ."""
+    def test_something(self):
         pass
 
 

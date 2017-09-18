@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 """Tester."""
 
-import datetime
+from datetime import datetime
 from io import StringIO
 from os.path import isdir
 import unittest
@@ -15,6 +15,7 @@ class Tester:
     FAILURE = "FAILURE"  # the test failed
     ISSUES = "ISSUES"  # the test contains issues (e.g. unexpected success)
     SUCCESS = "SUCCESS"  # the test ran successfully
+    NEUTRAL = "NEUTRAL"  # no tests or some other neutral state
 
     def __init__(self, base):
         """Initializer."""
@@ -23,23 +24,21 @@ class Tester:
         self.base = base
         self.last_result = None
         self.last_time = None
-        self.last_output = None
         self.test()
 
     def test(self):
         """Run unit tests with automatic discovery and save results."""
         loader = unittest.TestLoader()
         suite = loader.discover(start_dir=self.base)
-        output = StringIO()
-        runner = unittest.TextTestRunner(stream=output, verbosity=2)
+        runner = unittest.TextTestRunner(stream=StringIO(), verbosity=2)
         result = runner.run(suite)
-        output.seek(0)
-        self.last_time = datetime.datetime.now()
+        self.last_time = datetime.now()
         self.last_result = result
-        self.last_output = output.readlines()
 
     def status(self):
         """Return the status of the last test."""
+        if self.last_result.testsRun == 0:
+            return self.NEUTRAL
         errors = self.last_result.errors
         failures = self.last_result.failures
         unexpected_successes = self.last_result.unexpectedSuccesses
@@ -51,6 +50,15 @@ class Tester:
             return self.ISSUES
         else:
             return self.SUCCESS
+
+    def successful(self):
+        run = self.last_result.testsRun
+        errors = len(self.last_result.errors)
+        failures = len(self.last_result.failures)
+        unexpected = len(self.last_result.unexpectedSuccesses)
+        unsuccessful = errors + failures + unexpected
+        successful = run - unsuccessful
+        return successful
 
 
 if __name__ == "__main__":

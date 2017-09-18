@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 """Unit tests for :py:module:`scan` module."""
 
-import datetime
+from datetime import datetime
 from os.path import abspath, dirname, exists
 import unittest
 import fs.tempfs as tempfs
@@ -24,7 +24,7 @@ class TestScannerInstantiation(unittest.TestCase):
     def test_init_succeeds_on_existing_dir(self):
         """Test ``Scanner`` init succeeds on existing dir."""
         scanner = Scanner(base=LOCATION)
-        self.assertIsInstance(scanner.last_time, datetime.datetime)
+        self.assertIsInstance(scanner.last_time, datetime)
         self.assertIsInstance(scanner.last_result, dict)
         self.assertIn(__file__, scanner.last_result)
 
