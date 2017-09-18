@@ -45,7 +45,6 @@ class Tester:
         print(self.last_result.unexpectedSuccesses)
 
 
-
 if __name__ == "__main__":
     tester = Tester(base=".")
     tester.test()
