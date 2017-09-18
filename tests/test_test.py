@@ -12,3 +12,7 @@ class TestTester(unittest.TestCase):
     def test_something(self):
         """Test ..."""
         self.fail()
+
+
+if __name__ == "__main__":
+    unittest.main()  # pragma: no cover
