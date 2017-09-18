@@ -11,6 +11,11 @@ import unittest
 class Tester:
     """Tester."""
 
+    ERROR = "ERROR"  # an error occurred during the test
+    FAILURE = "FAILURE"  # the test failed
+    ISSUES = "ISSUES"  # the test contains issues (e.g. unexpected success)
+    SUCCESS = "SUCCESS"  # the test ran successfully
+
     def __init__(self, base):
         """Initializer."""
         if not isdir(base):
@@ -33,19 +38,22 @@ class Tester:
         self.last_result = result
         self.last_output = output.readlines()
 
-    # TODO: results extraction
     def status(self):
         """Return the status of the last test."""
-        print(self.last_result.__dict__)
-        print(self.last_result.testsRun)
-        print(self.last_result.errors)
-        print(self.last_result.failures)
-        print(self.last_result.skipped)
-        print(self.last_result.expectedFailures)
-        print(self.last_result.unexpectedSuccesses)
+        errors = self.last_result.errors
+        failures = self.last_result.failures
+        unexpected_successes = self.last_result.unexpectedSuccesses
+        if errors:
+            return self.ERROR
+        elif failures:
+            return self.FAILURE
+        elif unexpected_successes:
+            return self.ISSUES
+        else:
+            return self.SUCCESS
 
 
 if __name__ == "__main__":
     tester = Tester(base=".")
     tester.test()
-    tester.status()
+    print(tester.status())

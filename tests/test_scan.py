@@ -2,7 +2,8 @@
 # -*- coding: utf-8 -*-
 """Unit tests for :py:module:`scan` module."""
 
-from os.path import abspath, dirname, basename, exists
+import datetime
+from os.path import abspath, dirname, exists
 import unittest
 import fs.tempfs as tempfs
 from scan import Scanner
@@ -23,6 +24,8 @@ class TestScannerInstantiation(unittest.TestCase):
     def test_init_succeeds_on_existing_dir(self):
         """Test ``Scanner`` init succeeds on existing dir."""
         scanner = Scanner(base=LOCATION)
+        self.assertIsInstance(scanner.last_time, datetime.datetime)
+        self.assertIsInstance(scanner.last_result, dict)
         self.assertIn(__file__, scanner.last_result)
 
 
@@ -39,6 +42,7 @@ class TestScannerBehavior(unittest.TestCase):
         self.tfs = tempfs.TempFS(temp_dir=LOCATION)
         self.base = self.tfs.desc("/")
         # print("temp dir '{}' created".format(self.base))
+        assert exists(self.base)
         # create scanner
         self.scanner = Scanner(base=self.base)
 
@@ -49,6 +53,7 @@ class TestScannerBehavior(unittest.TestCase):
         """
         # print("closing temp dir tree in '{}'".format(self.tfs.desc("/")))
         self.tfs.close()
+        assert not exists(self.base)
 
     def setup_directory_tree(self):
         """Set up content for the temporary directory tree.
