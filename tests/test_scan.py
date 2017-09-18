@@ -59,8 +59,10 @@ class TestScannerBehavior(unittest.TestCase):
                     file
                     subsubdir/
                     file
+                emptysubdir/
         """
         self.tfs.makedirs("subdir/subsubdir/")
+        self.tfs.makedir("emptysubdir/")
         self.tfs.create("file")
         with self.tfs.open("file", mode="wt") as fh:
             fh.write("This is original content\n")
@@ -81,10 +83,8 @@ class TestScannerBehavior(unittest.TestCase):
         self.setup_directory_tree()
         self.assertFalse(self.scanner.has_changed())
 
-    @unittest.skip(
-        "unsure if scanning for changing dirs without content is needed")
     def test_scanning_added_sudir_succeds(self):
-        """Test if..."""
+        """Test if scanning an added an empty subdir succeeds """
         self.tfs.makedir("subdir/")
         self.assertTrue(self.scanner.has_changed())
         self.assertFalse(self.scanner.has_changed())
@@ -99,6 +99,13 @@ class TestScannerBehavior(unittest.TestCase):
         """Test if an added file in a subdir is detected by the scanner."""
         self.tfs.makedir("subdir/")
         self.tfs.create("subdir/file")
+        self.assertTrue(self.scanner.has_changed())
+        self.assertFalse(self.scanner.has_changed())
+
+    def test_scanning_removed_subdir_succeeds(self):
+        """Test if a removed subdir is detected by the scanner."""
+        self.setup_directory_tree()
+        self.tfs.removedir("emptysubdir")
         self.assertTrue(self.scanner.has_changed())
         self.assertFalse(self.scanner.has_changed())
 
@@ -120,6 +127,14 @@ class TestScannerBehavior(unittest.TestCase):
         """Test if renaming a file is detected by the scanner."""
         self.setup_directory_tree()
         self.tfs.move("file", "renamed_file")
+        self.assertTrue(self.scanner.has_changed())
+        self.assertFalse(self.scanner.has_changed())
+
+    def test_scanning_renamed_empty_dir_succeeds(self):
+        """Test if renaming an empty dir is detected by the scanner."""
+        self.setup_directory_tree()
+        self.tfs.makedir("renamed_subdir/")
+        self.tfs.movedir("emptysubdir/", "renamed_subdir/")
         self.assertTrue(self.scanner.has_changed())
         self.assertFalse(self.scanner.has_changed())
 
