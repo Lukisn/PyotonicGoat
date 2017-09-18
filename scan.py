@@ -31,7 +31,6 @@ class Scanner:
         scan = {}  # {"full/path/file.name": <stat_info object>}
         for path, _, files in walk(self.base):  # directories not needed
             path = abspath(path)
-            scan[path] = stat(path)  # save directory stat data
             for fname in files:
                 full_path = join(path, fname)
                 scan[full_path] = stat(full_path)  # save file stat data

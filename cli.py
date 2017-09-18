@@ -16,14 +16,6 @@ def parse_args(argv=None):
     return args
 
 
-def print_status_line(time="-", status="?", failed="-", run="-", action="."):
-    fmt = "\r[{time}] {status} {failed}/{run} {action}"
-
-    print(fmt.format(time=time, status=status, failed=failed, run=run,
-                     action=action),
-          end="", flush=True)
-
-
 def main():
     args = parse_args()
     print(args)
@@ -33,11 +25,8 @@ def main():
     print(tester.last_result)
 
     while True:
-        # print_status_line(action="scanning...")
         if scanner.has_changed():
-            # print_status_line("testing...")
-            tester.test()
-            print_status_line(tester.last_time, "OK?", "x", "y")
+            print(scanner.last_time)
         time.sleep(1)
 
 
