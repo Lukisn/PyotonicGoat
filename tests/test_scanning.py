@@ -2,13 +2,13 @@
 # -*- coding: utf-8 -*-
 """Unit tests for :py:module:`scan` module."""
 
+import unittest
 from datetime import datetime
 from os.path import abspath, dirname, exists
-import unittest
 import fs.tempfs as tempfs
-from scan import Scanner
+from pyotonicgoat.scanning import Scanner
 
-LOCATION = dirname(abspath(__file__))
+HERE = dirname(abspath(__file__))
 
 
 class TestScannerInstantiation(unittest.TestCase):
@@ -23,7 +23,7 @@ class TestScannerInstantiation(unittest.TestCase):
 
     def test_init_succeeds_on_existing_dir(self):
         """Test ``Scanner`` init succeeds on existing dir."""
-        scanner = Scanner(base=LOCATION)
+        scanner = Scanner(base=HERE)
         self.assertIsInstance(scanner.last_time, datetime)
         self.assertIsInstance(scanner.last_result, dict)
         self.assertIn(__file__, scanner.last_result)
@@ -39,7 +39,7 @@ class TestScannerBehavior(unittest.TestCase):
         """
         # create temporary directory tree
         # print("creating temp dir tree in '{}'".format(LOCATION))
-        self.tfs = tempfs.TempFS(temp_dir=LOCATION)
+        self.tfs = tempfs.TempFS(temp_dir=HERE)
         self.base = self.tfs.desc("/")
         # print("temp dir '{}' created".format(self.base))
         assert exists(self.base)
