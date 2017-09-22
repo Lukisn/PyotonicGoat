@@ -22,31 +22,6 @@ class ResultAdapter:
         self.expectedFailures = expectedFailures  # [(case, traceback), ...]
         self.unexpectedSuccesses = unexpectedSuccesses  # [case, ...]
 
-    # def __init__(self, unittest_result):
-    #     """Initializer."""
-    #     # The total number of tests run so far.
-    #     self.testsRun = unittest_result.testsRun
-    #     # A list containing 2-tuples of TestCase instances and strings holding
-    #     # formatted tracebacks. Each tuple represents a test which raised an
-    #     # unexpected exception.
-    #     self.errors = self._extract_tuple(unittest_result.errors)
-    #     # A list containing 2-tuples of TestCase instances and strings holding
-    #     # formatted tracebacks. Each tuple represents a test where a failure
-    #     # was explicitly signalled using the TestCase.assert*() methods.
-    #     self.failures = self._extract_tuple(unittest_result.failures)
-    #     # A list containing 2-tuples of TestCase instances and strings holding
-    #     # the reason for skipping the test.
-    #     self.skipped = self._extract_tuple(unittest_result.skipped)
-    #     # A list containing 2-tuples of TestCase instances and strings holding
-    #     # formatted tracebacks. Each tuple represents an expected failure of
-    #     # the test case.
-    #     self.expectedFailures = \
-    #         self._extract_tuple(unittest_result.expectedFailures)
-    #     # A list containing TestCase instances that were marked as expected
-    #     # failures, but succeeded.
-    #     self.unexpectedSuccesses = \
-    #         self._extract(unittest_result.unexpectedSuccesses)
-
     def __repr__(self):
         """Debugging string representation."""
         fmt = ("<{} run={} errors={} failures={} skipped={} "
@@ -73,7 +48,6 @@ class ResultAdapter:
         """Instantiate object from a json file."""
         with open(infilename, mode="rt") as infile:
             data = json.load(infile)
-            print(data)
         return cls(data["testsRun"], data["errors"], data["failures"],
                    data["skipped"], data["expectedFailures"],
                    data["unexpectedSuccesses"])
@@ -88,10 +62,8 @@ class ResultAdapter:
             "expectedFailures": self.expectedFailures,
             "unexpectedSuccesses": self.unexpectedSuccesses
         }
-        print(json.dumps(data))
         with open(outfilename, mode="wt") as outfile:
             json.dump(data, outfile, indent=4)
-
 
     @staticmethod
     def _qualified_name(case):
@@ -117,6 +89,23 @@ class ResultAdapter:
             name = ResultAdapter._qualified_name(case)
             list.append(name)
         return list
+
+    def successful_tests(self):
+        """Get the number of successful tests."""
+        successful = self.testsRun
+        successful -= len(self.errors)
+        successful -= len(self.failures)
+        successful -= len(self.unexpectedSuccesses)
+        return successful
+
+    def status(self):
+        """Get the overall status of the test result."""
+        if len(self.errors):
+            return "ERROR"
+        elif len(self.failures) or len(self.unexpectedSuccesses):
+            return "FAILURE"
+        else:
+            return "SUCCESS"
 
 
 def run_tests(base):

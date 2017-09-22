@@ -5,19 +5,23 @@
 from datetime import datetime
 from os.path import abspath, dirname, exists, join
 import unittest
-# tester
+from pyotonicgoat.testing import ResultAdapter
+# TODO: find testing strategy and write unit tests
 
 HERE = dirname(abspath(__file__))
 
 
+@unittest.skip("testing")
 class ExampleTestCase(unittest.TestCase):
 
     def test_success(self):
         pass
 
+    # @unittest.skip("remove failure")
     def test_failure(self):
         self.fail()
 
+    # @unittest.skip("remove error")
     def test_error(self):
         raise RuntimeError("Unexpected Error")
 
@@ -29,6 +33,7 @@ class ExampleTestCase(unittest.TestCase):
     def test_expected_failure(self):
         self.fail()
 
+    # @unittest.skip("remove unexpected success")
     @unittest.expectedFailure
     def test_unexpected_success(self):
         pass

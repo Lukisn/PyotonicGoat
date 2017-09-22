@@ -3,10 +3,11 @@
 
 import argparse
 from datetime import datetime, timezone
+import subprocess
 import sys
 import time
 from pyotonicgoat.scanning import Scanner
-# tester
+from pyotonicgoat.testing import ResultAdapter
 
 
 def now():
@@ -23,20 +24,62 @@ def parse_args(argv=None):
     parser.add_argument(
         "-i", "--interval", type=float, default=2.0,
         help="scan interval in seconds")
+    parser.add_argument(
+        "-f", "--file", type=str, default="results.json",
+        help="Intermediate result file name"
+    )
     args = parser.parse_args(argv)
     return args
+
+
+def run_tests_in_subprocess(args):
+    """Run unittests in a dedicated subprocess."""
+    subprocess.run(["python3", "testing.py", args.base, "-o", args.file])
+    return ResultAdapter.from_json(args.file)
+
+
+def print_status(result, message, color=None, status=None):
+    fmt = "\r[{time}] [{color}{status:^7s}{reset}] {successful} / {run} - {message}"
+    time_fmt = "%H:%M:%S"
+    colors = {
+        "ERROR": "\033[33;1m",  # yellow
+        "FAILURE": "\033[31;1m",  # red
+        "SUCCESS": "\033[32;1m",  # green
+        "NEUTRAL": "\033[34;1m",  # blue
+        "RESET": "\033[0m"
+    }
+    if color is None:
+        color = result.status()
+    if status is None:
+        status = result.status()
+    print(fmt.format(
+        time=now().strftime(time_fmt),
+        color=colors[color],
+        status=status,
+        reset=colors["RESET"],
+        successful=result.successful_tests(),
+        run=result.testsRun,
+        message=message), end="", flush=True)
 
 
 def main():
     """Main program."""
     args = parse_args()
     scanner = Scanner(base=args.base)
+    result = run_tests_in_subprocess(args)
+    # print(result)
+    print_status(result, "initial scan.")
+    scanner.scan()
 
     while True:
-        print("[{}] scanning...".format(now()))
+        # print("[{}] scanning...".format(now()))
+        print_status(result, "scanning...")
         if scanner.has_changed():
-            print("[{}] CHANGED! testing...".format(now()))
-            # tester
+            # print("[{}] CHANGED! testing...".format(now()))
+            print_status(result, "testing...", color="NEUTRAL", status="???")
+            result = run_tests_in_subprocess(args)
+            print_status(result, "done.")
+            scanner.scan()
         time.sleep(args.interval)
 
 
