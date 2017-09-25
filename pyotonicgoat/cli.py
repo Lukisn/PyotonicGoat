@@ -38,8 +38,17 @@ def run_tests_in_subprocess(args):
     return ResultAdapter.from_json(args.file)
 
 
+# TODO: unify printing -> CLI class ?
+def print_message(message):
+    fmt = "\r[{time}] - {msg}"
+    time_fmt = "%H:%M:%S"
+    print(fmt.format(time=now().strftime(time_fmt), msg=message),
+          end="", flush=True)
+
+
 def print_status(result, message, color=None, status=None):
-    fmt = "\r[{time}] [{color}{status:^7s}{reset}] {successful} / {run} - {message}"
+    """Print status line to the command line."""
+    fmt = "\r[{time}] [{color}{status:^7s}{reset}] {succ} / {run} - {msg}"
     time_fmt = "%H:%M:%S"
     colors = {
         "ERROR": "\033[33;1m",  # yellow
@@ -52,31 +61,28 @@ def print_status(result, message, color=None, status=None):
         color = result.status()
     if status is None:
         status = result.status()
-    print(fmt.format(
-        time=now().strftime(time_fmt),
-        color=colors[color],
-        status=status,
-        reset=colors["RESET"],
-        successful=result.successful_tests(),
-        run=result.testsRun,
-        message=message), end="", flush=True)
+    print(fmt.format(time=now().strftime(time_fmt),
+                     color=colors[color],
+                     status=status,
+                     reset=colors["RESET"],
+                     succ=result.successful_tests(),
+                     run=result.testsRun,
+                     msg=message), end="", flush=True)
 
 
 def main():
     """Main program."""
     args = parse_args()
+    print_message("starting up...")
     scanner = Scanner(base=args.base)
     result = run_tests_in_subprocess(args)
-    # print(result)
-    print_status(result, "initial scan.")
+    print_status(result, "initial result.")
     scanner.scan()
 
     while True:
-        # print("[{}] scanning...".format(now()))
         print_status(result, "scanning...")
         if scanner.has_changed():
-            # print("[{}] CHANGED! testing...".format(now()))
-            print_status(result, "testing...", color="NEUTRAL", status="???")
+            print_status(result, "testing...", color="NEUTRAL", status="?")
             result = run_tests_in_subprocess(args)
             print_status(result, "done.")
             scanner.scan()

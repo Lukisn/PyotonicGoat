@@ -7,6 +7,7 @@ from io import StringIO
 import json
 import sys
 import unittest
+# TODO: catch stdout and stderr
 
 
 class ResultAdapter:
@@ -22,7 +23,7 @@ class ResultAdapter:
         self.expectedFailures = expectedFailures  # [(case, traceback), ...]
         self.unexpectedSuccesses = unexpectedSuccesses  # [case, ...]
 
-    def __repr__(self):
+    def __repr__(self):  # pragma: no cover
         """Debugging string representation."""
         fmt = ("<{} run={} errors={} failures={} skipped={} "
                "expecteFailures={} unexpectedSuccesses={}>")
@@ -133,14 +134,8 @@ def main():
     """Main program."""
     args = parse_args()
     result = run_tests(args.base)
-    # print(result)
-    # print(result.errors[0])
-    # print(result.errors[0][0].__dict__)
     adapted_result = ResultAdapter.from_unittest(result)
-    # print(adapted_result)
     adapted_result.write_json(args.output)
-    # reread_result = adapted_result.from_json("outfile.json")
-    # print(reread_result)
 
 
 if __name__ == "__main__":
