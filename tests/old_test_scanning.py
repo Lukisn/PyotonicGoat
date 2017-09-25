@@ -4,9 +4,8 @@
 
 import unittest
 from datetime import datetime
-from os.path import abspath, dirname, exists, join
-import shutil
-from tempfile import TemporaryDirectory, NamedTemporaryFile
+from os.path import abspath, dirname, exists
+import fs.tempfs as tempfs
 from pyotonicgoat.scanning import Scanner
 
 HERE = dirname(abspath(__file__))
@@ -15,7 +14,7 @@ HERE = dirname(abspath(__file__))
 class TestScannerInstantiation(unittest.TestCase):
     """Unit test case for ``Scanner`` initialization."""
 
-    def test_init_raises_on_non_existing_dir(self):
+    def test_init_raises_on_nonexisting_dir(self):
         """Test ``Scanner`` init raises on non existing dir."""
         non_existing_dir = "./this/does/not/exist/"
         assert not exists(non_existing_dir)
@@ -31,29 +30,35 @@ class TestScannerInstantiation(unittest.TestCase):
 
 
 class TestScannerBehavior(unittest.TestCase):
-    """Test case for ``Scanner`` behavior."""
+    """Test case for ``Scanner`` beahavior."""
 
     def setUp(self):
         """Set up test fixture.
 
         Create a temporary directory tree to scan and manipulate.
         """
-        self.temp_dir = TemporaryDirectory()
-        assert exists(self.temp_dir.name)
-        self.scanner = Scanner(base=self.temp_dir.name)
+        # create temporary directory tree
+        # print("creating temp dir tree in '{}'".format(LOCATION))
+        self.tfs = tempfs.TempFS(temp_dir=HERE)
+        self.base = self.tfs.desc("/")
+        # print("temp dir '{}' created".format(self.base))
+        assert exists(self.base)
+        # create scanner
+        self.scanner = Scanner(base=self.base)
 
     def tearDown(self):
         """Tear down test fixture.
 
         Close and thereby remove the temporary directory tree.
         """
-        self.temp_dir.cleanup()
-        assert not exists(self.temp_dir.name)
+        # print("closing temp dir tree in '{}'".format(self.tfs.desc("/")))
+        self.tfs.close()
+        assert not exists(self.base)
 
     def setup_directory_tree(self):
         """Set up content for the temporary directory tree.
 
-            temp_dir_root/
+            tmp_dir_root/
                 file
                 subdir/
                     file
@@ -61,21 +66,17 @@ class TestScannerBehavior(unittest.TestCase):
                     file
                 emptysubdir/
         """
-        self.subdir = TemporaryDirectory(dir=self.temp_dir.name)
-        self.subsubdir = TemporaryDirectory(dir=self.subdir.name)
-        self.empty_subdir = TemporaryDirectory(dir=self.temp_dir.name)
-        self.temp_file = NamedTemporaryFile(
-            dir=self.temp_dir.name, mode="w+t")
-        self.temp_file.write("This is original content\n")
-        self.temp_file.flush()
-        self.subdir_temp_file = NamedTemporaryFile(
-            dir=self.subdir.name, mode="w+t")
-        self.subdir_temp_file.write("This is original content\n")
-        self.subdir_temp_file.flush()
-        self.subsubdir_temp_file = NamedTemporaryFile(
-            dir=self.subsubdir.name, mode="w+t")
-        self.subsubdir_temp_file.write("This is original content\n")
-        self.subsubdir_temp_file.flush()
+        self.tfs.makedirs("subdir/subsubdir/")
+        self.tfs.makedir("emptysubdir/")
+        self.tfs.create("file")
+        with self.tfs.open("file", mode="wt") as fh:
+            fh.write("This is original content\n")
+        self.tfs.create("subdir/file")
+        with self.tfs.open("subdir/file", mode="wt") as fh:
+            fh.write("This is original content\n")
+        self.tfs.create("subdir/subsubdir/file")
+        with self.tfs.open("subdir/subsubdir/file", mode="wt") as fh:
+            fh.write("This is original content\n")
         self.scanner.scan()  # capture current state
 
     def test_scanning_unchanged_empty_dir_succeeds(self):
@@ -89,60 +90,59 @@ class TestScannerBehavior(unittest.TestCase):
 
     def test_scanning_added_file_succeeds(self):
         """Test if an added file is detected by the scanner."""
-        _ = NamedTemporaryFile(dir=self.temp_dir.name)
+        self.tfs.create("file")
         self.assertTrue(self.scanner.has_changed())
         self.assertFalse(self.scanner.has_changed())
 
     def test_scanning_added_file_in_subdir_succeeds(self):
         """Test if an added file in a subdir is detected by the scanner."""
-        subdir = TemporaryDirectory(dir=self.temp_dir.name)
-        _ = NamedTemporaryFile(dir=subdir.name)
+        self.tfs.makedir("subdir/")
+        self.tfs.create("subdir/file")
         self.assertTrue(self.scanner.has_changed())
         self.assertFalse(self.scanner.has_changed())
 
     def test_scanning_removed_file_succeeds(self):
         """Test if a removed file is detected by the scanner."""
         self.setup_directory_tree()
-        self.temp_file.close()
+        self.tfs.remove("file")
         self.assertTrue(self.scanner.has_changed())
         self.assertFalse(self.scanner.has_changed())
 
     def test_scanning_removed_file_in_subdir_succeeds(self):
         """Test if a removed file in a subdir  is detected by the scanner."""
         self.setup_directory_tree()
-        self.subdir_temp_file.close()
+        self.tfs.remove("subdir/file")
         self.assertTrue(self.scanner.has_changed())
         self.assertFalse(self.scanner.has_changed())
 
     def test_scanning_renamed_file_succeeds(self):
         """Test if renaming a file is detected by the scanner."""
         self.setup_directory_tree()
-        target = join(dirname(self.temp_file.name), "renamed_file")
-        shutil.move(self.temp_file.name, target)
+        self.tfs.move("file", "renamed_file")
         self.assertTrue(self.scanner.has_changed())
         self.assertFalse(self.scanner.has_changed())
 
     def test_scanning_renamed_dir_succeeds(self):
         """Test if renaming a directory is detected by the scanner."""
         self.setup_directory_tree()
-        target = join(self.temp_dir.name, "renamed_subdir/")
-        shutil.move(self.subdir.name, target)
+        self.tfs.makedir("renamed_subdir/")
+        self.tfs.movedir("subdir/", "renamed_subdir/")
         self.assertTrue(self.scanner.has_changed())
         self.assertFalse(self.scanner.has_changed())
 
     def test_scanning_changed_file_succeeds(self):
         """Test if changing a file's content is detected by the scanner."""
         self.setup_directory_tree()
-        self.temp_file.write("This is new content\n")
-        self.temp_file.flush()
+        with self.tfs.open("file", mode="at") as fh:
+            fh.write("This is new content\n")
         self.assertTrue(self.scanner.has_changed())
         self.assertFalse(self.scanner.has_changed())
 
     def test_scanning_changed_file_in_subdir_succeeds(self):
         """Test if changing a file's content in a subdir is detected."""
         self.setup_directory_tree()
-        self.subdir_temp_file.write("This is new content\n")
-        self.subdir_temp_file.flush()
+        with self.tfs.open("subdir/file", mode="at") as fh:
+            fh.write("This is new content\n")
         self.assertTrue(self.scanner.has_changed())
         self.assertFalse(self.scanner.has_changed())
 
