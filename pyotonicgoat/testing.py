@@ -7,7 +7,6 @@ from io import StringIO
 import json
 import sys
 import unittest
-# TODO: catch stdout and stderr
 
 
 class ResultAdapter:
@@ -102,11 +101,11 @@ class ResultAdapter:
     def status(self):
         """Get the overall status of the test result."""
         if len(self.errors):
-            return "ERROR"
+            return "Error"
         elif len(self.failures) or len(self.unexpectedSuccesses):
-            return "FAILURE"
+            return "Failure"
         else:
-            return "SUCCESS"
+            return "Success"
 
 
 def run_tests(base):
