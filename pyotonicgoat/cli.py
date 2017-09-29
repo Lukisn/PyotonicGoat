@@ -194,7 +194,7 @@ def parse_args(argv=None):
     return args
 
 
-# TODO: handle exceptions an keyboard interrupts so no error bubbles up!
+# TODO: handle exceptions an keyboard interrupts so no error bubbles up! (see signal?)
 def main():
     args = parse_args()
     timestamp = now().strftime(TIME_FMT)
