@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
+from argparse import ArgumentParser
 import itertools
 import os
 import subprocess
@@ -14,52 +15,57 @@ from pyotonicgoat.testing import ResultAdapter
 TIME_FMT = "%H:%M:%S"
 
 
-class ScannerThread(threading.Thread):
+class LoopThreadBase(threading.Thread):
 
-    def __init__(self, base, interval):
+    def __init__(self):
         super().__init__()
-        self.interval = interval
-        self.last_change = now()
-        self.scanner = Scanner(base)
         self.running = False
 
     def run(self):
         self.running = True
         while self.running:
-            self.scan()
-            time.sleep(self.interval)
+            self.run_forever()
 
     def stop(self):
         self.running = False
         self.join()
+
+    def run_forever(self):
+        raise NotImplementedError
+
+
+class ScannerThread(LoopThreadBase):
+
+    def __init__(self, base, interval):
+        super().__init__()
+        self.interval = interval
+        self.scanner = Scanner(base)  # scans initially
+        self.last_change = now()
+
+    def run_forever(self):
+        if (now() - self.last_change).total_seconds() > self.interval:
+            self.scan()
 
     def scan(self):
         if self.scanner.has_changed():
             self.last_change = self.scanner.last_time
 
 
-class TesterThread(threading.Thread):
+class TesterThread(LoopThreadBase):
 
     def __init__(self, base):
         super().__init__()
         self.base = base
-        self.tmp = tempfile.TemporaryDirectory()
-        self.file = os.path.join(self.tmp.name, "results.json")
+        self.tmp_dir = tempfile.TemporaryDirectory()
+        self.file = os.path.join(self.tmp_dir.name, "results.json")
         self.last_change = None
         self.last_result = None
         self.trigger_testing = False
         self.test()
-        self.running = False
 
-    def run(self):
-        self.running = True
-        while self.running:
-            if self.trigger_testing:
-                self.test()
-
-    def stop(self):
-        self.running = False
-        self.join()
+    def run_forever(self):
+        if self.trigger_testing:
+            self.test()
 
     def test(self):
         subprocess.run(
@@ -76,7 +82,7 @@ class TesterThread(threading.Thread):
             return self.last_result.status()
 
 
-class OutputThread(threading.Thread):
+class OutputThread(LoopThreadBase):
 
     def __init__(self, base=".", scan_interval=1, output_interval=0.33):
         super().__init__()
@@ -86,21 +92,21 @@ class OutputThread(threading.Thread):
         self.scan_thread = ScannerThread(base=base, interval=scan_interval)
         self.test_thread = TesterThread(base=base)
 
+    def run_forever(self):
+        self.output()
+        time.sleep(self.output_interval)
+        if self.test_thread.last_change < self.scan_thread.last_change:
+            self.test_thread.trigger_testing = True
+
     def run(self):
         self.scan_thread.start()
         self.test_thread.start()
-        self.running = True
-        while self.running:
-            self.output()
-            time.sleep(self.output_interval)
-            if self.test_thread.last_change < self.scan_thread.last_change:
-                self.test_thread.trigger_testing = True
+        super().run()
 
     def stop(self):
-        self.running = False
+        super().stop()
         self.scan_thread.stop()
         self.test_thread.stop()
-        self.join()
 
     def output(self):
         fmt = "\r[{time}] {ind} [{status:^7s}] {green}/{run} {info}"
@@ -111,8 +117,13 @@ class OutputThread(threading.Thread):
             green = self.test_thread.last_result.successful_tests()
             run = self.test_thread.last_result.testsRun
 
-        # construct additional info string:
-        info = ""
+        print(fmt.format(time=now().strftime(TIME_FMT),
+                         status=colored_status(status),
+                         green=green, run=run, info=self.build_info(),
+                         ind=next(self.spinner)),
+              end="", flush=True)
+
+    def build_info(self):
         errors = len(self.test_thread.last_result.errors)
         failures = len(self.test_thread.last_result.failures)
         skipped = len(self.test_thread.last_result.skipped)
@@ -137,32 +148,41 @@ class OutputThread(threading.Thread):
         if expected > 0:
             expected_info = "{} xfails".format(expected)
             infos.append(expected_info)
-        info = "({}) ".format(", ".join(infos))
+        return "({}) ".format(", ".join(infos))
 
-        print(fmt.format(time=now().strftime(TIME_FMT),
-                         status=colored_status(status),
-                         green=green, run=run, info=info,
-                         ind=next(self.spinner)),
-              end="", flush=True)
+
+def parse_args(argv=None):
+    """Parse command line arguments."""
+    parser = ArgumentParser("Run PyotonicGoat CLI")
+    parser.add_argument(
+        "base", type=str,
+        help="Base directory to scan and run tests from")
+    parser.add_argument(
+        "-i", "--interval", type=float, default=2.0,
+        help="scan interval in seconds")
+    args = parser.parse_args(argv)
+    return args
 
 
 def main():
-    timestamp = now().strftime(TIME_FMT)
-    print(f"[{timestamp}] starting up... (exit with CTRL-C)")
+    args = parse_args()
 
-    output = OutputThread("..")
+    timestamp = now().strftime(TIME_FMT)
+    print(f"[{timestamp}] starting up ... (exit with CTRL-C)")
+
+    output = OutputThread(base=args.base, scan_interval=args.interval)
     output.start()
 
     while True:
         try:
             time.sleep(10)
         except KeyboardInterrupt:
-            print()
             timestamp = now().strftime(TIME_FMT)
-            print(f"[{timestamp}] shutting down ...")
+            print(f"\n[{timestamp}] shutting down ...")
             output.stop()
             break
 
 
 if __name__ == "__main__":
     main()
+

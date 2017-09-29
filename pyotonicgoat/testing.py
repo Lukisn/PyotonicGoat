@@ -7,6 +7,7 @@ from io import StringIO
 import json
 import sys
 import unittest
+# TODO: implement Tester class with similar interface like scanner class
 
 
 class ResultAdapter:
