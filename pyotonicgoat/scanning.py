@@ -2,9 +2,9 @@
 # -*- coding: utf-8 -*-
 """Scanner."""
 
-from datetime import datetime
 from os import walk, stat
 from os.path import abspath, join, isdir
+from pyotonicgoat.util import now
 
 
 class Scanner:
@@ -34,7 +34,7 @@ class Scanner:
             for fname in files:
                 full_path = join(path, fname)
                 scan[full_path] = stat(full_path)  # save file stat data
-        self.last_time = datetime.now()
+        self.last_time = now()
         self.last_result = scan
         return scan
 

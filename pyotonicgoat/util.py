@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
+"""Utility module."""
+
 from datetime import datetime, timezone
 
 

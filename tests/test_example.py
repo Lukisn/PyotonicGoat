@@ -5,7 +5,7 @@ import time
 import unittest
 
 
-@unittest.skip("remove all example tests")
+# @unittest.skip("remove all example tests")
 class ExampleTestCase(unittest.TestCase):
 
     def test_success(self):
@@ -20,7 +20,7 @@ class ExampleTestCase(unittest.TestCase):
     def test_error(self):
         raise RuntimeError("Unexpected Error")
 
-    # @unittest.skip("test skipping")
+    @unittest.skip("test skipping")
     def test_skipped(self):
         pass
 
@@ -28,7 +28,7 @@ class ExampleTestCase(unittest.TestCase):
     def test_expected_failure(self):
         self.fail()
 
-    # unittest.skip("remove unexpected success")
+    @unittest.skip("remove unexpected success")
     @unittest.expectedFailure
     def test_unexpected_success(self):
         pass
