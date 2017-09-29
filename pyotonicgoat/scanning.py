@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""Scanner."""
+"""Scanner module."""
 
 from os import walk, stat
 from os.path import abspath, join, isdir
@@ -11,7 +11,11 @@ class Scanner:
     """Simple Directory scanner."""
 
     def __init__(self, base):
-        """Initializer."""
+        """Initializer.
+
+        :param base: base directory to scan
+        :type base: str (existing directory)
+        """
         if not isdir(base):
             raise IOError("Base dir '{}' does not exist!".format(base))
         self.base = base

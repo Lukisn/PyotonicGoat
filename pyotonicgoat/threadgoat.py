@@ -2,20 +2,17 @@
 # -*- coding: utf-8 -*-
 
 from argparse import ArgumentParser
-import itertools
-import os
-import subprocess
-import tempfile
-import time
-import threading
+from time import sleep
+from threading import Thread
 from pyotonicgoat.util import now, colored, colored_status
 from pyotonicgoat.scanning import Scanner
-from pyotonicgoat.testing import ResultAdapter
+from pyotonicgoat.testing import Tester
+
 
 TIME_FMT = "%H:%M:%S"
 
 
-class LoopThreadBase(threading.Thread):
+class LoopThreadBase(Thread):
 
     def __init__(self):
         super().__init__()
@@ -55,31 +52,49 @@ class TesterThread(LoopThreadBase):
 
     def __init__(self, base):
         super().__init__()
-        self.base = base
-        self.tmp_dir = tempfile.TemporaryDirectory()
-        self.file = os.path.join(self.tmp_dir.name, "results.json")
-        self.last_change = None
-        self.last_result = None
+        self.tester = Tester(base)
+        self.last_change = now()
         self.trigger_testing = False
-        self.test()
 
     def run_forever(self):
         if self.trigger_testing:
             self.test()
 
     def test(self):
-        subprocess.run(
-            ["python3", "testing.py", self.base, "-o", self.file])
-        result = ResultAdapter.from_json(self.file)
-        self.last_change = now()
-        self.last_result = result
+        self.tester.test()
         self.trigger_testing = False
 
     def status(self):
-        if self.last_result is None:
-            return "initial"
-        else:
-            return self.last_result.status()
+        return (self.tester.last_result.status(),
+                self.tester.last_result.green(),
+                self.tester.last_result.testsRun)
+
+    def info(self):
+        infos = []
+
+        # errors preventing testing in the first place:
+        errors = len(self.tester.last_result.errors)
+        if errors:
+            infos.append(colored(f"{errors} errors", "yellow"))
+
+        # failures and unexpected succcesses are considered failures:
+        failures = len(self.tester.last_result.failures)
+        if failures:
+            infos.append(colored(f"{failures} errors", "red"))
+        unexpected = len(self.tester.last_result.unexpected)
+        if unexpected:
+            infos.append(colored(f"{unexpected} unexpected success", "red"))
+
+        # skipped and expected failures are only for information:
+        skipped = len(self.tester.last_result.skipped)
+        if skipped:
+            infos.append(f"{skipped} skipped")
+        expected = len(self.tester.last_result.expected)
+        if expected:
+            infos.append(f"{expected} xfails")
+
+        # build comma separated list string from given information list:
+        return "({}) ".format(", ".join(infos))
 
 
 class OutputThread(LoopThreadBase):
@@ -87,14 +102,13 @@ class OutputThread(LoopThreadBase):
     def __init__(self, base=".", scan_interval=1, output_interval=0.33):
         super().__init__()
         self.output_interval = output_interval
-        self.spinner = itertools.cycle("|/-\\")
         self.running = False
         self.scan_thread = ScannerThread(base=base, interval=scan_interval)
         self.test_thread = TesterThread(base=base)
 
     def run_forever(self):
         self.output()
-        time.sleep(self.output_interval)
+        sleep(self.output_interval)
         if self.test_thread.last_change < self.scan_thread.last_change:
             self.test_thread.trigger_testing = True
 
@@ -109,46 +123,12 @@ class OutputThread(LoopThreadBase):
         self.test_thread.stop()
 
     def output(self):
-        fmt = "\r[{time}] {ind} [{status:^7s}] {green}/{run} {info}"
-        if self.test_thread.last_result is None:
-            status, green, run = "?", "~*~", "~*~"
-        else:
-            status = self.test_thread.last_result.status()
-            green = self.test_thread.last_result.successful_tests()
-            run = self.test_thread.last_result.testsRun
-
-        print(fmt.format(time=now().strftime(TIME_FMT),
-                         status=colored_status(status),
-                         green=green, run=run, info=self.build_info(),
-                         ind=next(self.spinner)),
-              end="", flush=True)
-
-    def build_info(self):
-        errors = len(self.test_thread.last_result.errors)
-        failures = len(self.test_thread.last_result.failures)
-        skipped = len(self.test_thread.last_result.skipped)
-        expected = len(self.test_thread.last_result.expected)
-        unexpected = len(self.test_thread.last_result.unexpected)
-
-        infos = []
-        if errors > 0:
-            error_info = colored("{} errors".format(errors), "yellow")
-            infos.append(error_info)
-        if failures > 0:
-            failure_info = colored("{} failures".format(failures), "red")
-            infos.append(failure_info)
-        if unexpected > 0:  # unexpected Successes are failures too!
-            unexpected_info = colored(
-                "{} unexpected success".format(unexpected),
-                "red")
-            infos.append(unexpected_info)
-        if skipped > 0:
-            skipped_info = "{} skipped".format(skipped)
-            infos.append(skipped_info)
-        if expected > 0:
-            expected_info = "{} xfails".format(expected)
-            infos.append(expected_info)
-        return "({}) ".format(", ".join(infos))
+        fmt = "\r[{time}] [{status:}] {green}/{run} {info}"
+        status, green, run = self.test_thread.status()
+        print(fmt.format(
+            time=now().strftime(TIME_FMT),
+            status=colored_status(status), green=green, run=run,
+            info=self.test_thread.info()), end="", flush=True)
 
 
 def parse_args(argv=None):
@@ -166,16 +146,13 @@ def parse_args(argv=None):
 
 def main():
     args = parse_args()
-
     timestamp = now().strftime(TIME_FMT)
     print(f"[{timestamp}] starting up ... (exit with CTRL-C)")
-
     output = OutputThread(base=args.base, scan_interval=args.interval)
     output.start()
-
     while True:
         try:
-            time.sleep(10)
+            sleep(10)
         except KeyboardInterrupt:
             timestamp = now().strftime(TIME_FMT)
             print(f"\n[{timestamp}] shutting down ...")

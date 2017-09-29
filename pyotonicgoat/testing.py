@@ -1,6 +1,10 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""Tester for running unittests from the command line."""
+"""Tester module.
+
+This module contains the tester class and acts as an executable command line
+script for running the tests in a subprocess.
+"""
 
 from argparse import ArgumentParser
 from io import StringIO
@@ -14,7 +18,7 @@ from pyotonicgoat.util import now
 
 
 class ResultAdapter:
-    """Adapter class covering basic information from unittest TestResults."""
+    """Adapter containing basic information of test results."""
 
     def __init__(self, run, errors, failures, skipped, expected, unexpected):
         """Initializer."""
@@ -91,7 +95,7 @@ class ResultAdapter:
             list.append(name)
         return list
 
-    def successful_tests(self):
+    def green(self):
         """Get the number of successful tests."""
         successful = self.testsRun
         successful -= len(self.errors)
@@ -110,8 +114,10 @@ class ResultAdapter:
 
 
 class Tester:
+    """Simple unittest runner."""
 
     def __init__(self, base):
+        """Initializer."""
         if not isdir(base):
             raise IOError("Base dir '{}' does not exist!".format(base))
         self.base = base
@@ -122,9 +128,11 @@ class Tester:
         self.test()  # initialize tester with first test result
 
     def __del__(self):
+        """'Destructor'."""
         self.tmp_dir.cleanup()
 
     def test(self):
+        """Run the unittests in a dedicated subprocess."""
         run(["python3", __file__, self.base, "-o", self.file])
         result = ResultAdapter.from_json(self.file)
 

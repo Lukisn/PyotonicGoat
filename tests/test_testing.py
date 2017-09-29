@@ -2,9 +2,8 @@
 # -*- coding: utf-8 -*-
 """Unit tests for :py:module:`test` module."""
 
-from datetime import datetime
-from os.path import abspath, dirname, exists, join
-import unittest
+from os.path import abspath, dirname
+from unittest import TestCase, main
 from pyotonicgoat.testing import ResultAdapter
 # TODO: find testing strategy and write unit tests
 
@@ -12,7 +11,7 @@ from pyotonicgoat.testing import ResultAdapter
 HERE = dirname(abspath(__file__))
 
 
-class TestTesterInitialization(unittest.TestCase):
+class TestTesterInitialization(TestCase):
     """Unit test case for ``Tester`` initialization."""
 
     def test_empty_default_init(self):
@@ -97,7 +96,7 @@ class TestTesterInitialization(unittest.TestCase):
         pass
 
 
-class TestTesterJSONInterface(unittest.TestCase):
+class TestTesterJSONInterface(TestCase):
     """Unit test case for ``Tester`` JSON Interface."""
 
     def test_from_json_factory_method(self):
@@ -113,7 +112,7 @@ class TestTesterJSONInterface(unittest.TestCase):
         pass
 
 
-class TestTesterMethods(unittest.TestCase):
+class TestTesterMethods(TestCase):
     """Unit test case for ``Tester`` methods."""
 
     def test_successful_tests(self):
@@ -126,4 +125,4 @@ class TestTesterMethods(unittest.TestCase):
 
 
 if __name__ == "__main__":
-    unittest.main()  # pragma: no cover
+    main()  # pragma: no cover

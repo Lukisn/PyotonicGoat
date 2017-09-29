@@ -2,17 +2,17 @@
 # -*- coding: utf-8 -*-
 """Unit tests for :py:module:`scan` module."""
 
-import unittest
+from unittest import TestCase, main, skip
 from datetime import datetime
 from os.path import abspath, dirname, exists, join
-import shutil
+from shutil import move
 from tempfile import TemporaryDirectory, NamedTemporaryFile
 from pyotonicgoat.scanning import Scanner
 
 HERE = dirname(abspath(__file__))
 
 
-class TestScannerInstantiation(unittest.TestCase):
+class TestScannerInstantiation(TestCase):
     """Unit test case for ``Scanner`` initialization."""
 
     def test_init_raises_on_non_existing_dir(self):
@@ -30,8 +30,8 @@ class TestScannerInstantiation(unittest.TestCase):
         self.assertIn(__file__, scanner.last_result)
 
 
-@unittest.skip("causes FileNotFoundErrors")
-class TestScannerBehavior(unittest.TestCase):
+@skip("causes FileNotFoundErrors")
+class TestScannerBehavior(TestCase):
     """Test case for ``Scanner`` behavior."""
 
     def setUp(self):
@@ -119,7 +119,7 @@ class TestScannerBehavior(unittest.TestCase):
         """Test if renaming a file is detected by the scanner."""
         self.setup_directory_tree()
         target = join(dirname(self.temp_file.name), "renamed_file")
-        shutil.move(self.temp_file.name, target)
+        move(self.temp_file.name, target)
         self.assertTrue(self.scanner.has_changed())
         self.assertFalse(self.scanner.has_changed())
 
@@ -127,7 +127,7 @@ class TestScannerBehavior(unittest.TestCase):
         """Test if renaming a directory is detected by the scanner."""
         self.setup_directory_tree()
         target = join(self.temp_dir.name, "renamed_subdir/")
-        shutil.move(self.subdir.name, target)
+        move(self.subdir.name, target)
         self.assertTrue(self.scanner.has_changed())
         self.assertFalse(self.scanner.has_changed())
 
@@ -149,4 +149,4 @@ class TestScannerBehavior(unittest.TestCase):
 
 
 if __name__ == "__main__":
-    unittest.main()  # pragma: no cover
+    main()  # pragma: no cover

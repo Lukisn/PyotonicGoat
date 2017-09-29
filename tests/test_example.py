@@ -1,34 +1,34 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-import time
-import unittest
+from time import sleep
+from unittest import TestCase, skip, expectedFailure
 
 
-@unittest.skip("remove all example tests")
-class ExampleTestCase(unittest.TestCase):
+@skip("remove all example tests")
+class ExampleTestCase(TestCase):
 
     def test_success(self):
-        time.sleep(1)
+        sleep(1)
         pass
 
-    @unittest.skip("remove failure")
+    # @skip("remove failure")
     def test_failure(self):
         self.fail()
 
-    @unittest.skip("remove error")
+    # @skip("remove error")
     def test_error(self):
         raise RuntimeError("Unexpected Error")
 
-    @unittest.skip("test skipping")
+    @skip("test skipping")
     def test_skipped(self):
         pass
 
-    @unittest.expectedFailure
+    @expectedFailure
     def test_expected_failure(self):
         self.fail()
 
-    @unittest.skip("remove unexpected success")
-    @unittest.expectedFailure
+    # @unittest.skip("remove unexpected success")
+    @expectedFailure
     def test_unexpected_success(self):
         pass
