@@ -18,12 +18,12 @@ class TestTesterInitialization(unittest.TestCase):
     def test_empty_default_init(self):
         """Test default initializer initialization with 'empty' values."""
         result = ResultAdapter(
-            testsRun=0,
+            run=0,
             errors=[],  # [(case, traceback), ...]
             failures=[],  # [(case, traceback), ...]
             skipped=[],  # [(case, traceback), ...]
-            expectedFailures=[],  # [(case, traceback), ...]
-            unexpectedSuccesses=[],  # [case, ...]
+            expected=[],  # [(case, traceback), ...]
+            unexpected=[],  # [case, ...]
         )
         self.assertEqual(0, result.testsRun)
         self.assertIsInstance(result.errors, list)
@@ -32,22 +32,22 @@ class TestTesterInitialization(unittest.TestCase):
         self.assertEqual([], result.failures)
         self.assertIsInstance(result.skipped, list)
         self.assertEqual([], result.skipped)
-        self.assertIsInstance(result.expectedFailures, list)
-        self.assertEqual([], result.expectedFailures)
-        self.assertIsInstance(result.unexpectedSuccesses, list)
-        self.assertEqual([], result.unexpectedSuccesses)
+        self.assertIsInstance(result.expected, list)
+        self.assertEqual([], result.expected)
+        self.assertIsInstance(result.unexpected, list)
+        self.assertEqual([], result.unexpected)
 
     def test_default_init(self):
         """Test default initializer with real unit test cases."""
         case = "runTest"
         traceback = "Traceback (most recent call last): ..."
         result = ResultAdapter(
-            testsRun=42,
+            run=42,
             errors=[(case, traceback)],  # [(case, traceback), ...]
             failures=[(case, traceback)],  # [(case, traceback), ...]
             skipped=[(case, traceback)],  # [(case, traceback), ...]
-            expectedFailures=[(case, traceback)],  # [(case, traceback), ...]
-            unexpectedSuccesses=[case],  # [case, ...]
+            expected=[(case, traceback)],  # [(case, traceback), ...]
+            unexpected=[case],  # [case, ...]
         )
         self.assertEqual(42, result.testsRun)
         self.assertIsInstance(result.errors, list)
@@ -71,15 +71,15 @@ class TestTesterInitialization(unittest.TestCase):
             self.assertIsInstance(skipped_traceback, str)
             self.assertEqual(case, skipped_case)
             self.assertEqual(traceback, skipped_traceback)
-        self.assertIsInstance(result.expectedFailures, list)
-        for expected_tuple in result.expectedFailures:
+        self.assertIsInstance(result.expected, list)
+        for expected_tuple in result.expected:
             expected_case, expected_traceback = expected_tuple
             self.assertIsInstance(expected_case, str)
             self.assertIsInstance(expected_traceback, str)
             self.assertEqual(case, expected_case)
             self.assertEqual(traceback, expected_traceback)
-        self.assertIsInstance(result.unexpectedSuccesses, list)
-        for unexpected_case in result.unexpectedSuccesses:
+        self.assertIsInstance(result.unexpected, list)
+        for unexpected_case in result.unexpected:
             self.assertIsInstance(unexpected_case, str)
             self.assertEqual(case, unexpected_case)
 

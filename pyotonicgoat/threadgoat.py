@@ -127,8 +127,8 @@ class OutputThread(LoopThreadBase):
         errors = len(self.test_thread.last_result.errors)
         failures = len(self.test_thread.last_result.failures)
         skipped = len(self.test_thread.last_result.skipped)
-        expected = len(self.test_thread.last_result.expectedFailures)
-        unexpected = len(self.test_thread.last_result.unexpectedSuccesses)
+        expected = len(self.test_thread.last_result.expected)
+        unexpected = len(self.test_thread.last_result.unexpected)
 
         infos = []
         if errors > 0:

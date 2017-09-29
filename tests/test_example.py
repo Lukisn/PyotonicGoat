@@ -5,7 +5,7 @@ import time
 import unittest
 
 
-# @unittest.skip("remove all example tests")
+@unittest.skip("remove all example tests")
 class ExampleTestCase(unittest.TestCase):
 
     def test_success(self):
