@@ -80,7 +80,7 @@ class TesterThread(LoopThreadBase):
         # failures and unexpected succcesses are considered failures:
         failures = len(self.tester.last_result.failures)
         if failures:
-            infos.append(colored(f"{failures} errors", "red"))
+            infos.append(colored(f"{failures} failures", "red"))
         unexpected = len(self.tester.last_result.unexpected)
         if unexpected:
             infos.append(colored(f"{unexpected} unexpected success", "red"))
@@ -88,13 +88,50 @@ class TesterThread(LoopThreadBase):
         # skipped and expected failures are only for information:
         skipped = len(self.tester.last_result.skipped)
         if skipped:
-            infos.append(f"{skipped} skipped")
+            infos.append(colored(f"{skipped} skipped", "blue"))
         expected = len(self.tester.last_result.expected)
         if expected:
-            infos.append(f"{expected} xfails")
+            infos.append(colored(f"{expected} expected failures", "blue"))
 
         # build comma separated list string from given information list:
         return "({}) ".format(", ".join(infos))
+
+    def error_tracebacks(self):
+        tracebacks = ""
+        if self.tester.last_result.errors:
+            tracebacks += colored("errors:\n", color="yellow", bold=True)
+            for case, traceback in self.tester.last_result.errors.items():
+                tracebacks += f"{case}:\n{traceback}"
+        return tracebacks
+
+    def failure_tracebacks(self):
+        tracebacks = ""
+        if self.tester.last_result.failures:
+            tracebacks += colored("failures:\n", color="red", bold=True)
+            for case, traceback in self.tester.last_result.failures.items():
+                tracebacks += f"{case}:\n{traceback}"
+        if self.tester.last_result.unexpected:
+            tracebacks += colored("unexpected successes:\n",
+                                  color="red", bold=True)
+            for case in self.tester.last_result.unexpected:
+                tracebacks += f"{case}\n"
+        return tracebacks
+
+    def skipped_tracebacks(self):
+        tracebacks = ""
+        if self.tester.last_result.skipped:
+            tracebacks += colored("skipped:\n", color="blue", bold=True)
+            for case, traceback in self.tester.last_result.skipped.items():
+                tracebacks += f"{case}: '{traceback}'\n"
+        return tracebacks
+
+    def expected_tracebacks(self):
+        tracebacks = ""
+        if self.tester.last_result.expected:
+            tracebacks += colored("expected failures:\n", color="blue", bold="True")
+            for case, traceback in self.tester.last_result.expected.items():
+                tracebacks += f"{case}:\n{traceback}"
+        return tracebacks
 
 
 class OutputThread(LoopThreadBase):
@@ -102,7 +139,8 @@ class OutputThread(LoopThreadBase):
     def __init__(self, base=".", scan_interval=1, output_interval=0.33):
         super().__init__()
         self.output_interval = output_interval
-        self.running = False
+        self.last_output = 0
+        self.paused = False
         self.scan_thread = ScannerThread(base=base, interval=scan_interval)
         self.test_thread = TesterThread(base=base)
 
@@ -122,13 +160,25 @@ class OutputThread(LoopThreadBase):
         self.scan_thread.stop()
         self.test_thread.stop()
 
+    def pause(self):
+        self.paused = True
+
+    def resume(self):
+        self.paused = False
+
     def output(self):
-        fmt = "\r[{time}] [{status:}] {green}/{run} {info}"
-        status, green, run = self.test_thread.status()
-        print(fmt.format(
-            time=now().strftime(TIME_FMT),
-            status=colored_status(status), green=green, run=run,
-            info=self.test_thread.info()), end="", flush=True)
+        if not self.paused:
+            # clear line:
+            print("\r{}".format(" " * self.last_output), end="")
+            # output status line:
+            fmt = "\r[{time}] [{status:}] {green}/{run} {info}"
+            status, green, run = self.test_thread.status()
+            output = fmt.format(
+                time=now().strftime(TIME_FMT),
+                status=colored_status(status), green=green, run=run,
+                info=self.test_thread.info())
+            self.last_output = len(output)
+            print(output, end="", flush=True)
 
 
 def parse_args(argv=None):
@@ -144,20 +194,41 @@ def parse_args(argv=None):
     return args
 
 
+# TODO: handle exceptions an keyboard interrupts so no error bubbles up!
 def main():
     args = parse_args()
     timestamp = now().strftime(TIME_FMT)
     print(f"[{timestamp}] starting up ... (exit with CTRL-C)")
     output = OutputThread(base=args.base, scan_interval=args.interval)
     output.start()
+
     while True:
         try:
-            sleep(10)
+            sleep(1.0)
         except KeyboardInterrupt:
-            timestamp = now().strftime(TIME_FMT)
-            print(f"\n[{timestamp}] shutting down ...")
-            output.stop()
-            break
+            try:
+                output.pause()
+                answer = input("\n[1] erros, [2] failures, [3] skipped, [4] expected failures, [q] quit, or resume? ").strip()
+                if answer == "1":  # errors
+                    print(output.test_thread.error_tracebacks())
+                elif answer == "2":  # failures
+                    print(output.test_thread.failure_tracebacks())
+                elif answer == "3":
+                    print(output.test_thread.skipped_tracebacks())
+                elif answer == "4":
+                    print(output.test_thread.expected_tracebacks())
+                elif answer == "q":  # quit
+                    timestamp = now().strftime(TIME_FMT)
+                    print(f"[{timestamp}] shutting down ...")
+                    output.stop()
+                    break
+                output.resume()
+                continue
+            except KeyboardInterrupt:
+                timestamp = now().strftime(TIME_FMT)
+                print(f"[{timestamp}] shutting down ...")
+                output.stop()
+                break
 
 
 if __name__ == "__main__":

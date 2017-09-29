@@ -18,7 +18,7 @@ class ExampleTestCase(TestCase):
 
     # @skip("remove error")
     def test_error(self):
-        raise RuntimeError("Unexpected Error")
+        raise RuntimeError("Error during test method")
 
     @skip("test skipping")
     def test_skipped(self):
