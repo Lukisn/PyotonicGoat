@@ -5,7 +5,7 @@ from time import sleep
 from unittest import TestCase, skip, expectedFailure
 
 
-# @skip("remove all example tests")
+@skip("remove all example tests")
 class ExampleTestCase(TestCase):
 
     def test_success(self):
