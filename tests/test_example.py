@@ -5,7 +5,7 @@ from time import sleep
 from unittest import TestCase, skip, expectedFailure
 
 
-@skip("remove all example tests")
+# @skip("remove all example tests")
 class ExampleTestCase(TestCase):
 
     def test_success(self):
@@ -20,7 +20,7 @@ class ExampleTestCase(TestCase):
     def test_error(self):
         raise RuntimeError("Error during test method")
 
-    @skip("test skipping")
+    # @skip("test skipping")
     def test_skipped(self):
         pass
 
@@ -28,7 +28,7 @@ class ExampleTestCase(TestCase):
     def test_expected_failure(self):
         self.fail()
 
-    # @unittest.skip("remove unexpected success")
+    # @skip("remove unexpected success")
     @expectedFailure
     def test_unexpected_success(self):
         pass

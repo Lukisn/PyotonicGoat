@@ -36,6 +36,11 @@ def colored(text, color, background="default", bold=False):
         return f"{modifier}{text}{reset}"
 
 
+def bold(text):
+    """Return bold text in default color."""
+    return colored(text, color="default", background="default", bold=True)
+
+
 def colored_status(status):
     """Return colored Status text according to status."""
     if status == "Success":

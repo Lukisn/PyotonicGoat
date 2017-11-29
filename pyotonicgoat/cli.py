@@ -2,9 +2,12 @@
 # -*- coding: utf-8 -*-
 
 from argparse import ArgumentParser
+from signal import signal, SIGINT
+from sys import stdin
 from time import sleep
 from threading import Thread
-from pyotonicgoat.util import now, colored, colored_status
+from pyotonicgoat.util import now, colored, colored_status, bold
+# TODO: use established coloring library (see crayons!)
 from pyotonicgoat.scanning import Scanner
 from pyotonicgoat.testing import Tester
 
@@ -17,15 +20,23 @@ class LoopThreadBase(Thread):
     def __init__(self):
         super().__init__()
         self.running = False
+        self.paused = False
 
     def run(self):
         self.running = True
         while self.running:
-            self.run_forever()
+            if not self.paused:
+                self.run_forever()
 
     def stop(self):
         self.running = False
         self.join()
+
+    def pause(self):
+        self.paused = True
+
+    def resume(self):
+        self.paused = False
 
     def run_forever(self):
         raise NotImplementedError
@@ -58,11 +69,11 @@ class TesterThread(LoopThreadBase):
 
     def run_forever(self):
         if self.trigger_testing:
+            self.trigger_testing = False
             self.test()
 
     def test(self):
         self.tester.test()
-        self.trigger_testing = False
 
     def status(self):
         return (self.tester.last_result.status(),
@@ -141,6 +152,7 @@ class OutputThread(LoopThreadBase):
         self.output_interval = output_interval
         self.last_output = 0
         self.paused = False
+        self.init_signal()
         self.scan_thread = ScannerThread(base=base, interval=scan_interval)
         self.test_thread = TesterThread(base=base)
 
@@ -161,10 +173,14 @@ class OutputThread(LoopThreadBase):
         self.test_thread.stop()
 
     def pause(self):
+        self.scan_thread.pause()
+        self.test_thread.pause()
         self.paused = True
 
     def resume(self):
         self.paused = False
+        self.scan_thread.resume()
+        self.test_thread.resume()
 
     def output(self):
         if not self.paused:
@@ -180,6 +196,26 @@ class OutputThread(LoopThreadBase):
             self.last_output = len(output)
             print(output, end="", flush=True)
 
+    def init_signal(self):
+        signal(SIGINT, self.handle_sigint)
+
+    def handle_sigint(self, sig, frame):
+        signal(SIGINT, self.signal_stop)
+        self.pause()
+        print("sleeping...")
+
+        # TODO: ask and do stuff
+        sleep(3)
+
+        print("resuming.")
+        self.init_signal()
+        self.resume()
+
+    def signal_stop(self, sig, frame):
+        timestamp = now().strftime(TIME_FMT)
+        print(f"\n[{timestamp}] shutting down ...")
+        self.stop()
+
 
 def parse_args(argv=None):
     """Parse command line arguments."""
@@ -194,41 +230,43 @@ def parse_args(argv=None):
     return args
 
 
-# TODO: handle exceptions an keyboard interrupts so no error bubbles up! (see signal?)
 def main():
     args = parse_args()
     timestamp = now().strftime(TIME_FMT)
     print(f"[{timestamp}] starting up ... (exit with CTRL-C)")
+
     output = OutputThread(base=args.base, scan_interval=args.interval)
     output.start()
+    output.join()  # blocking until output.stop() is called
 
-    while True:
-        try:
-            sleep(1.0)
-        except KeyboardInterrupt:
-            try:
-                output.pause()
-                answer = input("\n[1] erros, [2] failures, [3] skipped, [4] expected failures, [q] quit, or resume? ").strip()
-                if answer == "1":  # errors
-                    print(output.test_thread.error_tracebacks())
-                elif answer == "2":  # failures
-                    print(output.test_thread.failure_tracebacks())
-                elif answer == "3":
-                    print(output.test_thread.skipped_tracebacks())
-                elif answer == "4":
-                    print(output.test_thread.expected_tracebacks())
-                elif answer == "q":  # quit
-                    timestamp = now().strftime(TIME_FMT)
-                    print(f"[{timestamp}] shutting down ...")
-                    output.stop()
-                    break
-                output.resume()
-                continue
-            except KeyboardInterrupt:
-                timestamp = now().strftime(TIME_FMT)
-                print(f"[{timestamp}] shutting down ...")
-                output.stop()
-                break
+    # TOOD: move output options to OutputTHread class signal handling
+    # while True:
+    #     try:
+    #         sleep(1.0)
+    #     except KeyboardInterrupt:
+    #         try:
+    #             output.pause()
+    #             answer = input("\n[1] erros, [2] failures, [3] skipped, [4] expected failures, [q] quit, or resume? ").strip()
+    #             if answer == "1":  # errors
+    #                 print(output.test_thread.error_tracebacks())
+    #             elif answer == "2":  # failures
+    #                 print(output.test_thread.failure_tracebacks())
+    #             elif answer == "3":
+    #                 print(output.test_thread.skipped_tracebacks())
+    #             elif answer == "4":
+    #                 print(output.test_thread.expected_tracebacks())
+    #             elif answer == "q":  # quit
+    #                 timestamp = now().strftime(TIME_FMT)
+    #                 print(f"[{timestamp}] shutting down ...")
+    #                 output.stop()
+    #                 break
+    #             output.resume()
+    #             continue
+    #         except KeyboardInterrupt:
+    #             timestamp = now().strftime(TIME_FMT)
+    #             print(f"[{timestamp}] shutting down ...")
+    #             output.stop()
+    #             break
 
 
 if __name__ == "__main__":
